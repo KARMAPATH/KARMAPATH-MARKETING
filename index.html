@@ -1323,6 +1323,10 @@ Read when you feel.</textarea>
             await new Promise(r => setTimeout(r, 400));
 
             try {
+                if (typeof html2canvas === 'undefined') {
+                    throw new Error('HTML2CANVAS_NOT_LOADED');
+                }
+
                 let captureWidth = window.innerWidth;
                 let captureHeight = window.innerHeight;
                 let offsetX = 0;
@@ -1398,9 +1402,13 @@ Read when you feel.</textarea>
                 exportModal.classList.add('open');
             } catch (error) {
                 console.error("Export failed:", error);
-                const msg = isIOS
-                    ? "Couldn't create the image — this usually means you're inside an app's built-in browser (WhatsApp, Instagram, etc.), which blocks this.\n\nTap ••• or ⋯ at the bottom of the screen, choose \"Open in Safari,\" then try exporting again from there."
-                    : "Something went wrong preparing the image. Please try again.";
+                let msg;
+                if (error && error.message === 'HTML2CANVAS_NOT_LOADED') {
+                    msg = "The image tool failed to load — usually a slow, blocked, or offline connection.\n\nCheck your internet connection, reload the page fully, and try again.";
+                } else {
+                    const detail = (error && (error.message || error.name)) ? String(error.message || error.name) : String(error);
+                    msg = "Couldn't create the image.\n\nTechnical detail (please screenshot this exact text if it happens again):\n" + detail;
+                }
                 alert(msg);
             }
 
