@@ -1534,7 +1534,7 @@ Read when you feel.</textarea>
                 const fontFamilyMap = { 'work-sans': 'Work Sans', 'jost': 'Jost', 'devanagari': 'Noto Serif Devanagari' };
                 const fontFamily = fontFamilyMap[fontSelect.value] || 'Work Sans';
                 const fontWeight = weightSelect.value || '400';
-                const fontSize = Math.max(20, Math.min(60, parseInt(sizeSlider.value, 10) || 34));
+                const fontSize = Math.max(14, Math.min(90, parseInt(sizeSlider.value, 10) || 34));
 
                 // Explicitly load THIS exact weight/size before measuring — document.fonts.ready
                 // (checked earlier) only guarantees already-requested fonts are ready, not that
@@ -1551,23 +1551,50 @@ Read when you feel.</textarea>
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                const maxTextWidth = captureWidth * 0.82;
-                const rawLines = textInput.value.split('\n');
-                const wrapped = [];
-                rawLines.forEach(rawLine => {
-                    if (rawLine.trim() === '') { wrapped.push(''); return; } // preserve intentional blank lines only
+                // Wraps a line to fit maxWidth. Falls back to breaking mid-word at the
+                // character level when a single word (or an unbroken Devanagari run —
+                // some shloka source text uses spacing/punctuation that doesn't always
+                // give clean word-break points) is wider than maxWidth on its own.
+                // Without this fallback, that one "word" never wraps and just runs off
+                // the right edge of the canvas — which is exactly the bug being reported.
+                function wrapLineRobust(rawLine, maxWidth) {
+                    if (rawLine.trim() === '') return [''];
+                    const out = [];
                     const words = rawLine.split(' ');
                     let current = '';
                     words.forEach(word => {
                         const test = current ? current + ' ' + word : word;
-                        if (ctx.measureText(test).width > maxTextWidth && current) {
-                            wrapped.push(current);
+                        if (ctx.measureText(test).width <= maxWidth) {
+                            current = test;
+                            return;
+                        }
+                        if (current) { out.push(current); current = ''; }
+                        if (ctx.measureText(word).width <= maxWidth) {
                             current = word;
                         } else {
-                            current = test;
+                            // Even the lone word is too wide — break it character by character.
+                            let chunk = '';
+                            for (const ch of word) {
+                                const testChunk = chunk + ch;
+                                if (ctx.measureText(testChunk).width > maxWidth && chunk) {
+                                    out.push(chunk);
+                                    chunk = ch;
+                                } else {
+                                    chunk = testChunk;
+                                }
+                            }
+                            current = chunk;
                         }
                     });
-                    wrapped.push(current);
+                    if (current) out.push(current);
+                    return out;
+                }
+
+                const maxTextWidth = captureWidth * 0.82;
+                const rawLines = textInput.value.split('\n');
+                const wrapped = [];
+                rawLines.forEach(rawLine => {
+                    wrapLineRobust(rawLine, maxTextWidth).forEach(l => wrapped.push(l));
                 });
 
                 const lineHeight = fontSize * 1.35;
