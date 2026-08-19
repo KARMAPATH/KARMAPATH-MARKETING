@@ -63,6 +63,14 @@
             justify-content: center;
         }
 
+        /* Devanagari conjuncts/matras can render wider than plain per-character width
+           suggests — give shloka text extra breathing room so it can't push past the
+           safe zone and get clipped in export, matching the fix applied to the canvas
+           fallback renderer for the same underlying reason. */
+        #safe-zone.sanskrit-active {
+            max-width: min(78vw, calc(100vh * 9 / 16 * 0.72));
+        }
+
         #display-text {
             white-space: pre-wrap;
             word-wrap: break-word;
@@ -560,7 +568,8 @@ Read when you feel.</textarea>
         <div class="modal-card">
             <p class="text-[9px] uppercase tracking-[0.35em] mb-1" style="color:var(--wm-gray);">Ready</p>
             <h2 class="text-sm font-medium mb-4" style="color:var(--charcoal); font-family:'Jost',sans-serif;">Your Image</h2>
-            <img id="export-preview-img" src="" alt="Preview" style="width:100%; border-radius:14px; margin-bottom:16px; display:block; box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+            <img id="export-preview-img" src="" alt="Preview" style="width:100%; border-radius:14px; margin-bottom:8px; display:block; box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+            <p id="renderer-badge" style="font-size:9px; letter-spacing:0.08em; color:var(--wm-gray); text-align:center; margin-bottom:12px; text-transform:uppercase;"></p>
             <p id="export-fallback-note" style="display:none; font-size:11px; color:var(--wm-gray); margin-bottom:10px; text-align:center;">
                 Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.
             </p>
@@ -652,6 +661,7 @@ Read when you feel.</textarea>
 
         const textInput = document.getElementById('text-input');
         const displayText = document.getElementById('display-text');
+        const safeZone = document.getElementById('safe-zone');
         const fontSelect = document.getElementById('font-select');
         const weightSelect = document.getElementById('weight-select');
         const colorSelect = document.getElementById('color-select');
@@ -1184,10 +1194,13 @@ Read when you feel.</textarea>
             displayText.classList.remove('font-jost-style', 'font-sanskrit-style');
             if (fontSelect.value === 'jost') {
                 displayText.classList.add('font-jost-style');
+                safeZone.classList.remove('sanskrit-active');
             } else if (fontSelect.value === 'devanagari') {
                 displayText.classList.add('font-sanskrit-style');
+                safeZone.classList.add('sanskrit-active');
             } else {
                 displayText.style.fontFamily = "'Work Sans', sans-serif";
+                safeZone.classList.remove('sanskrit-active');
             }
 
             displayText.style.fontSize = `${sizeSlider.value}px`;
@@ -1722,10 +1735,13 @@ Read when you feel.</textarea>
                 const canUseShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
                 pendingExport.canUseShare = canUseShare;
                 exportShareBtn.style.display = canUseShare ? 'block' : 'none';
+                document.getElementById('renderer-badge').textContent = usedFallback
+                    ? 'Renderer: Backup (font/browser quirk blocked the main one)'
+                    : 'Renderer: Primary';
                 exportFallbackNote.style.display = canUseShare ? 'none' : 'block';
-                exportFallbackNote.textContent = (usedFallback ? "Note: this used the backup renderer (a font/browser quirk blocked the main one) — quote, grid, mood, and border all included; only feed torn-edges are skipped. " : "") + (isIOS
+                exportFallbackNote.textContent = isIOS
                     ? "Tap Save Image, then long-press the photo that opens and choose \"Add to Photos.\""
-                    : "Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.");
+                    : "Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.";
 
                 exportModal.classList.add('open');
             } catch (error) {
