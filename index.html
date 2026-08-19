@@ -1404,12 +1404,73 @@ Read when you feel.</textarea>
         }
 
         // Native Canvas 2D fallback — used automatically if html2canvas fails for any
-        // reason. This draws the export directly (background gradient, text, logo)
-        // instead of screenshotting the live DOM, so there's no cross-origin resource
-        // for any browser to taint the canvas over. Simpler visually (no border/dot-grid/
-        // torn-edge modes) but reliable everywhere, which matters more when the primary
-        // path has failed.
-        async function renderFallbackCanvas(captureWidth, captureHeight) {
+        // reason. Draws directly (no DOM screenshot, no cross-origin taint risk) but
+        // now mirrors the actual selected mode — Dot Grid, quote text (any preset:
+        // Vocabulary/Mood Story/Draw Shloka all just set textInput.value, which this
+        // already reads), and the feather border — instead of always drawing the same
+        // basic layout regardless of what's selected.
+        const _imgCache = {};
+        function loadImageCached(src) {
+            if (_imgCache[src]) return _imgCache[src];
+            const p = new Promise((resolve, reject) => {
+                const im = new Image();
+                im.onload = () => resolve(im);
+                im.onerror = reject;
+                im.src = src;
+            });
+            _imgCache[src] = p;
+            return p;
+        }
+
+        async function drawBorderFeathersOnCanvas(ctx, captureWidth, captureHeight, offsetX, offsetY) {
+            if (!document.body.classList.contains('show-feather-border')) return;
+            const edges = document.querySelectorAll('.feather-border-edge');
+            for (const edge of edges) {
+                if (edge.offsetParent === null) continue; // hidden by the sides filter (tb/lr only)
+                const imgs = edge.querySelectorAll('img');
+                for (const img of imgs) {
+                    const rect = img.getBoundingClientRect();
+                    const x = rect.left - offsetX;
+                    const y = rect.top - offsetY;
+                    if (x < -60 || x > captureWidth + 60 || y < -60 || y > captureHeight + 60) continue;
+                    try {
+                        const loaded = await loadImageCached(img.src);
+                        const rotateMatch = (img.style.transform || '').match(/rotate\(([-\d.]+)deg\)/);
+                        const angle = rotateMatch ? parseFloat(rotateMatch[1]) * Math.PI / 180 : 0;
+                        ctx.save();
+                        ctx.globalAlpha = parseFloat(img.style.opacity || '1');
+                        ctx.translate(x + rect.width / 2, y + rect.height / 2);
+                        ctx.rotate(angle);
+                        ctx.drawImage(loaded, -rect.width / 2, -rect.height / 2, rect.width, rect.height);
+                        ctx.restore();
+                    } catch (e) { /* skip this one feather, draw the rest */ }
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        async function drawLogoAndWordmark(ctx, captureWidth, captureHeight, mood, bottomY) {
+            try {
+                const logoSrc = FEATHER_LOGO[mood] || FEATHER_LOGO.default;
+                const img = await loadImageCached(logoSrc);
+                const logoW = 26, logoH = (img.height / img.width) * logoW;
+                ctx.drawImage(img, captureWidth / 2 - logoW / 2, bottomY, logoW, logoH);
+
+                ctx.fillStyle = '#6D28D9';
+                ctx.font = '400 16px "Jost", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('K A R M A P A T H', captureWidth / 2, bottomY + logoH + 24);
+
+                ctx.fillStyle = '#8A8A8A';
+                ctx.font = '400 10px "Jost", sans-serif';
+                ctx.fillText('S A N K A L P', captureWidth / 2, bottomY + logoH + 42);
+            } catch (e) {
+                console.warn('Fallback canvas: could not draw logo, continuing without it', e);
+            }
+        }
+
+        async function renderFallbackCanvas(captureWidth, captureHeight, offsetX, offsetY) {
             const canvas = document.createElement('canvas');
             const scale = 2;
             canvas.width = Math.round(captureWidth * scale);
@@ -1433,69 +1494,93 @@ Read when you feel.</textarea>
                 try { await document.fonts.ready; } catch (e) { /* draw with fallback font if needed */ }
             }
 
-            // Quote text — word-aware line wrapping, centered
             const mood = moodSelect.value;
-            const accentHex = MOOD_ACCENTS[mood] || '#64748B';
-            const colorVal = colorSelect.value;
-            const textColor = colorVal === 'accent' ? accentHex : (colorVal || '#2B2B2B');
-            const fontFamilyMap = { 'work-sans': 'Work Sans', 'jost': 'Jost', 'devanagari': 'Noto Serif Devanagari' };
-            const fontFamily = fontFamilyMap[fontSelect.value] || 'Work Sans';
-            const fontWeight = weightSelect.value || '400';
-            const fontSize = Math.max(20, Math.min(60, parseInt(sizeSlider.value, 10) || 34));
+            const isDotGrid = document.body.classList.contains('mode-dotgrid');
 
-            ctx.fillStyle = textColor;
-            ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}", sans-serif`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
+            if (isDotGrid) {
+                // Replicate the 4-column dot grid: mood-tinted feather + label per cell
+                const moods = Object.keys(MOOD_ACCENTS);
+                const cols = 4, rows = 2;
+                const cellW = Math.min(captureWidth * 0.85, 280) / cols;
+                const cellH = 70;
+                const gridW = cellW * cols;
+                const gridH = cellH * rows;
+                const gridX = captureWidth / 2 - gridW / 2;
+                const gridY = captureHeight / 2 - gridH / 2;
 
-            const maxTextWidth = captureWidth * 0.82;
-            const rawLines = textInput.value.split('\n');
-            const wrapped = [];
-            rawLines.forEach(rawLine => {
-                const words = rawLine.split(' ');
-                let current = '';
-                words.forEach(word => {
-                    const test = current ? current + ' ' + word : word;
-                    if (ctx.measureText(test).width > maxTextWidth && current) {
-                        wrapped.push(current);
-                        current = word;
-                    } else {
-                        current = test;
-                    }
+                for (let i = 0; i < moods.length; i++) {
+                    const col = i % cols, row = Math.floor(i / cols);
+                    const cx = gridX + col * cellW + cellW / 2;
+                    const cy = gridY + row * cellH + cellH / 2;
+                    try {
+                        const img = await loadImageCached(FEATHER_LOGO[moods[i]] || FEATHER_LOGO.default);
+                        const w = 30, h = (img.height / img.width) * w;
+                        ctx.drawImage(img, cx - w / 2, cy - h / 2 - 8, w, h);
+                        ctx.fillStyle = '#2B2B2B';
+                        ctx.font = '400 8px "Jost", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(moods[i].toUpperCase(), cx, cy + h / 2 + 6);
+                    } catch (e) { /* skip this cell, draw the rest */ }
+                }
+                await drawLogoAndWordmark(ctx, captureWidth, captureHeight, mood, captureHeight - 100);
+            } else {
+                // Quote text — word-aware line wrapping, centered. Covers the default
+                // mode plus every preset (Vocabulary/Mood Story/Draw Shloka all just
+                // set textInput.value, already read here).
+                const accentHex = MOOD_ACCENTS[mood] || '#64748B';
+                const colorVal = colorSelect.value;
+                const textColor = colorVal === 'accent' ? accentHex : (colorVal || '#2B2B2B');
+                const fontFamilyMap = { 'work-sans': 'Work Sans', 'jost': 'Jost', 'devanagari': 'Noto Serif Devanagari' };
+                const fontFamily = fontFamilyMap[fontSelect.value] || 'Work Sans';
+                const fontWeight = weightSelect.value || '400';
+                const fontSize = Math.max(20, Math.min(60, parseInt(sizeSlider.value, 10) || 34));
+
+                // Explicitly load THIS exact weight/size before measuring — document.fonts.ready
+                // (checked earlier) only guarantees already-requested fonts are ready, not that
+                // this specific combination has ever been requested. Without this, measureText()
+                // can silently use a fallback font while fillText() later uses the real one once
+                // it arrives, causing mismatched wrapping and off-center text.
+                const fontString = `${fontWeight} ${fontSize}px "${fontFamily}"`;
+                if (document.fonts && document.fonts.load) {
+                    try { await document.fonts.load(fontString); } catch (e) { /* proceed with fallback font */ }
+                }
+
+                ctx.fillStyle = textColor;
+                ctx.font = `${fontString}, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                const maxTextWidth = captureWidth * 0.82;
+                const rawLines = textInput.value.split('\n');
+                const wrapped = [];
+                rawLines.forEach(rawLine => {
+                    if (rawLine.trim() === '') { wrapped.push(''); return; } // preserve intentional blank lines only
+                    const words = rawLine.split(' ');
+                    let current = '';
+                    words.forEach(word => {
+                        const test = current ? current + ' ' + word : word;
+                        if (ctx.measureText(test).width > maxTextWidth && current) {
+                            wrapped.push(current);
+                            current = word;
+                        } else {
+                            current = test;
+                        }
+                    });
+                    wrapped.push(current);
                 });
-                wrapped.push(current);
-            });
 
-            const lineHeight = fontSize * 1.35;
-            const startY = captureHeight * 0.42 - ((wrapped.length - 1) * lineHeight) / 2;
-            wrapped.forEach((line, i) => {
-                ctx.fillText(line, captureWidth / 2, startY + i * lineHeight);
-            });
-
-            // Feather crest + wordmark near the bottom
-            try {
-                const logoSrc = FEATHER_LOGO[mood] || FEATHER_LOGO.default;
-                const img = await new Promise((resolve, reject) => {
-                    const im = new Image();
-                    im.onload = () => resolve(im);
-                    im.onerror = reject;
-                    im.src = logoSrc;
+                const lineHeight = fontSize * 1.35;
+                const startY = captureHeight * 0.42 - ((wrapped.length - 1) * lineHeight) / 2;
+                wrapped.forEach((line, i) => {
+                    if (line !== '') ctx.fillText(line, captureWidth / 2, startY + i * lineHeight);
                 });
-                const logoW = 26, logoH = (img.height / img.width) * logoW;
-                const logoX = captureWidth / 2 - logoW / 2;
-                const logoY = captureHeight - 128;
-                ctx.drawImage(img, logoX, logoY, logoW, logoH);
 
-                ctx.fillStyle = '#6D28D9';
-                ctx.font = '400 16px "Jost", sans-serif';
-                ctx.fillText('K A R M A P A T H', captureWidth / 2, logoY + logoH + 24);
-
-                ctx.fillStyle = '#8A8A8A';
-                ctx.font = '400 10px "Jost", sans-serif';
-                ctx.fillText('S A N K A L P', captureWidth / 2, logoY + logoH + 42);
-            } catch (e) {
-                console.warn('Fallback canvas: could not draw logo, continuing without it', e);
+                await drawLogoAndWordmark(ctx, captureWidth, captureHeight, mood, captureHeight - 128);
             }
+
+            // Border draws on top of either mode, matching whatever's live on screen
+            await drawBorderFeathersOnCanvas(ctx, captureWidth, captureHeight, offsetX, offsetY);
 
             return canvas;
         }
@@ -1573,7 +1658,7 @@ Read when you feel.</textarea>
                     canvas.toDataURL('image/jpeg', 0.5);
                 } catch (primaryError) {
                     console.warn('html2canvas failed, using native canvas fallback instead:', primaryError);
-                    canvas = await renderFallbackCanvas(captureWidth, captureHeight);
+                    canvas = await renderFallbackCanvas(captureWidth, captureHeight, offsetX, offsetY);
                     usedFallback = true;
                 }
 
@@ -1592,7 +1677,7 @@ Read when you feel.</textarea>
                 pendingExport.canUseShare = canUseShare;
                 exportShareBtn.style.display = canUseShare ? 'block' : 'none';
                 exportFallbackNote.style.display = canUseShare ? 'none' : 'block';
-                exportFallbackNote.textContent = (usedFallback ? "Simplified export (border/grid styling not included this time). " : "") + (isIOS
+                exportFallbackNote.textContent = (usedFallback ? "Note: this used the backup renderer (a font/browser quirk blocked the main one) — quote, grid, mood, and border all included; only feed torn-edges are skipped. " : "") + (isIOS
                     ? "Tap Save Image, then long-press the photo that opens and choose \"Add to Photos.\""
                     : "Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.");
 
