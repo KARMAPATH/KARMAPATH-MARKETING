@@ -1557,6 +1557,21 @@ Read when you feel.</textarea>
                 // give clean word-break points) is wider than maxWidth on its own.
                 // Without this fallback, that one "word" never wraps and just runs off
                 // the right edge of the canvas — which is exactly the bug being reported.
+                // measureText().width is the simple "advance width" — for complex-shaped
+                // scripts like Devanagari (conjuncts, vowel signs/matras that visually
+                // extend beyond a naive per-character sum), it can under-report the true
+                // rendered width. That under-count was the actual cause of Sanskrit lines
+                // overflowing past center and getting clipped at the canvas edge, even
+                // though the same wrap/center logic worked fine for Latin text.
+                // actualBoundingBoxLeft/Right reflect the real drawn extent and catch this.
+                function getTextWidth(text) {
+                    const m = ctx.measureText(text);
+                    if (m.actualBoundingBoxLeft !== undefined && m.actualBoundingBoxRight !== undefined) {
+                        return Math.max(m.width, Math.abs(m.actualBoundingBoxLeft) + Math.abs(m.actualBoundingBoxRight));
+                    }
+                    return m.width;
+                }
+
                 function wrapLineRobust(rawLine, maxWidth) {
                     if (rawLine.trim() === '') return [''];
                     const out = [];
@@ -1564,19 +1579,19 @@ Read when you feel.</textarea>
                     let current = '';
                     words.forEach(word => {
                         const test = current ? current + ' ' + word : word;
-                        if (ctx.measureText(test).width <= maxWidth) {
+                        if (getTextWidth(test) <= maxWidth) {
                             current = test;
                             return;
                         }
                         if (current) { out.push(current); current = ''; }
-                        if (ctx.measureText(word).width <= maxWidth) {
+                        if (getTextWidth(word) <= maxWidth) {
                             current = word;
                         } else {
                             // Even the lone word is too wide — break it character by character.
                             let chunk = '';
                             for (const ch of word) {
                                 const testChunk = chunk + ch;
-                                if (ctx.measureText(testChunk).width > maxWidth && chunk) {
+                                if (getTextWidth(testChunk) > maxWidth && chunk) {
                                     out.push(chunk);
                                     chunk = ch;
                                 } else {
@@ -1590,7 +1605,11 @@ Read when you feel.</textarea>
                     return out;
                 }
 
-                const maxTextWidth = captureWidth * 0.82;
+                // Extra-conservative width budget for Devanagari specifically, on top of
+                // the more accurate measurement above — belt and suspenders, since this
+                // script has caused real overflow/centering bugs here before.
+                const isDevanagariFont = fontFamily === 'Noto Serif Devanagari';
+                const maxTextWidth = captureWidth * (isDevanagariFont ? 0.70 : 0.82);
                 const rawLines = textInput.value.split('\n');
                 const wrapped = [];
                 rawLines.forEach(rawLine => {
