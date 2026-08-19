@@ -1,0 +1,13 @@
+{
+  "name": "Karmapath Story Studio",
+  "short_name": "Story Studio",
+  "description": "Create on-brand Karmapath Instagram stories, posts, and reels — quotes, shlokas, and mood-tinted templates, ready to export.",
+  "start_url": "./karmapath_story_maker.html",
+  "display": "standalone",
+  "background_color": "#FAF6F4",
+  "theme_color": "#6D28D9",
+  "icons": [
+    { "src": "sm-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "sm-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
