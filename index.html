@@ -209,12 +209,12 @@
         }
 
         /* Consistency checklist + caption generator modals */
-        #checklist-modal, #caption-panel, #export-modal {
+        #checklist-modal, #caption-panel, #export-modal, #login-modal {
             display: none; position: fixed; inset: 0; z-index: 50;
             align-items: center; justify-content: center; background: rgba(43,43,43,0.4);
             backdrop-filter: blur(5px);
         }
-        #checklist-modal.open, #caption-panel.open, #export-modal.open { display: flex; }
+        #checklist-modal.open, #caption-panel.open, #export-modal.open, #login-modal.open { display: flex; }
         .modal-card {
             background: #fff; border-radius: 22px; padding: 26px; max-width: 380px; width: 90%;
             box-shadow: 0 30px 80px rgba(0,0,0,0.25); max-height: 82vh; overflow-y: auto;
@@ -332,7 +332,7 @@
     </button>
 
     <!-- Control Panel -->
-    <div id="control-panel" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 w-[95%] max-w-3xl bg-white/85 backdrop-blur-xl border border-black/10 rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.12)] transition-all duration-700 ease-in-out" style="max-height: 72vh; overflow-y: auto;">
+    <div id="control-panel" class="fixed bottom-2 left-1/2 transform -translate-x-1/2 z-20 w-[95%] max-w-3xl bg-white/85 backdrop-blur-xl border border-black/10 rounded-3xl p-5 md:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.12)] transition-all duration-700 ease-in-out" style="max-height: 50vh; overflow-y: auto;">
 
         <div class="flex justify-between items-center mb-5 sticky -top-5 md:-top-6 pt-5 md:pt-6 -mt-5 md:-mt-6 bg-white/85 backdrop-blur-xl z-10 rounded-t-3xl">
             <p class="text-[9px] md:text-[10px] uppercase tracking-[0.4em]" style="color:var(--wm-gray);">Studio Controls</p>
@@ -393,6 +393,7 @@
             <div class="relative group mt-2">
                 <textarea id="text-input" rows="2" class="w-full bg-white/60 border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:bg-white transition-all resize-none accent-border" style="color:var(--charcoal);">Observe your mind.
 Read when you feel.</textarea>
+                <p id="text-lock-note" class="text-[9px] mt-1" style="color:var(--wm-gray); display:none;">🔒 Presets only in this mode — Marketing Login unlocks custom typing.</p>
             </div>
 
             <div class="flex flex-col sm:flex-row gap-4 mt-2">
@@ -423,6 +424,7 @@ Read when you feel.</textarea>
                     </select>
                 </div>
             </div>
+            <p id="font-lock-note" class="text-[9px] mt-1" style="color:var(--wm-gray); display:none;">🔒 Font &amp; Weight locked in this mode — Marketing Login unlocks full styling.</p>
 
             <!-- Feather tint toggle -->
             <label class="flex items-center gap-2 px-2 text-[9px] uppercase tracking-widest" style="color:var(--wm-gray);">
@@ -462,9 +464,11 @@ Read when you feel.</textarea>
             </div>
 
             <!-- Caption generator -->
-            <div class="flex items-center gap-2 mx-2 self-start">
+            <div class="flex items-center gap-2 mx-2 self-start flex-wrap">
                 <button onclick="generateCaption()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--charcoal);">Generate Caption</button>
-                <a href="karmapath-brand-kit.html" target="_blank" rel="noopener" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--violet); text-decoration:none;">Brand Kit ↗</a>
+                <a id="brand-kit-link" href="karmapath-brand-kit.html" target="_blank" rel="noopener" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--violet); text-decoration:none; display:none;">Brand Kit ↗</a>
+                <button id="marketing-login-btn" onclick="showLoginModal()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--wm-gray);">Marketing Login</button>
+                <button id="marketing-logout-btn" onclick="marketingLogout()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--wm-gray); display:none;">Log Out</button>
             </div>
 
             <!-- Size Slider -->
@@ -479,6 +483,21 @@ Read when you feel.</textarea>
     </div>
 
     <!-- Consistency checklist — shown before every export -->
+    <!-- Marketing login — unlocks custom typing, font selection, and Brand Kit access -->
+    <div id="login-modal">
+        <div class="modal-card">
+            <p class="text-[9px] uppercase tracking-[0.35em] mb-1" style="color:var(--wm-gray);">Marketing Department</p>
+            <h2 class="text-sm font-medium mb-4" style="color:var(--charcoal); font-family:'Jost',sans-serif;">Log In to Unlock Full Access</h2>
+            <input id="login-username" type="text" placeholder="Username" autocomplete="username" class="w-full bg-white/60 border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:bg-white transition-all mb-3" style="color:var(--charcoal);">
+            <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" class="w-full bg-white/60 border border-black/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:bg-white transition-all" style="color:var(--charcoal);">
+            <p id="login-error" style="display:none; color:#DC2626; font-size:11px; margin-top:8px;">Incorrect username or password.</p>
+            <div class="flex gap-3 mt-5">
+                <button id="login-cancel" class="flex-1 border border-black/10 rounded-full py-2 text-[10px] uppercase tracking-widest" style="color:var(--wm-gray);">Cancel</button>
+                <button id="login-submit" class="flex-1 rounded-full py-2 text-[10px] uppercase tracking-widest text-white accent-bg">Log In</button>
+            </div>
+        </div>
+    </div>
+
     <div id="checklist-modal">
         <div class="modal-card">
             <p class="text-[9px] uppercase tracking-[0.35em] mb-1" style="color:var(--wm-gray);">Before You Publish</p>
@@ -1490,11 +1509,71 @@ Read when you feel.</textarea>
             if (document.body.classList.contains('show-feather-border')) buildFeatherBorder();
         }
 
+        // ===== Marketing access control =====
+        // Client-side only — this is a usage gate for casual restriction, not real
+        // security (anyone can view-source and find these). Change the credentials
+        // below to whatever you want; that's the only place they're defined.
+        const MARKETING_USERNAME = 'marketing';
+        const MARKETING_PASSWORD = 'karmapath2026';
+
+        function applyAccessMode(unlocked) {
+            document.body.classList.toggle('generic-mode', !unlocked);
+            textInput.readOnly = !unlocked;
+            fontSelect.disabled = !unlocked;
+            weightSelect.disabled = !unlocked;
+            document.getElementById('text-lock-note').style.display = unlocked ? 'none' : 'block';
+            document.getElementById('font-lock-note').style.display = unlocked ? 'none' : 'block';
+            document.getElementById('brand-kit-link').style.display = unlocked ? 'inline-block' : 'none';
+            document.getElementById('marketing-login-btn').style.display = unlocked ? 'none' : 'inline-block';
+            document.getElementById('marketing-logout-btn').style.display = unlocked ? 'inline-block' : 'none';
+            if (!unlocked) {
+                // Reset to the generic default look so a logged-out session can't be
+                // left mid-customization — presets still work fine on top of this.
+                fontSelect.value = 'work-sans';
+                weightSelect.value = '400';
+                updateDisplayAesthetics();
+            }
+        }
+
+        const loginModal = document.getElementById('login-modal');
+        const loginUsername = document.getElementById('login-username');
+        const loginPassword = document.getElementById('login-password');
+        const loginError = document.getElementById('login-error');
+
+        function showLoginModal() {
+            loginModal.classList.add('open');
+            loginError.style.display = 'none';
+            loginUsername.value = '';
+            loginPassword.value = '';
+            loginUsername.focus();
+        }
+        function hideLoginModal() { loginModal.classList.remove('open'); }
+
+        function attemptLogin() {
+            if (loginUsername.value.trim() === MARKETING_USERNAME && loginPassword.value === MARKETING_PASSWORD) {
+                localStorage.setItem('karmapath_marketing_unlocked', 'true');
+                applyAccessMode(true);
+                hideLoginModal();
+            } else {
+                loginError.style.display = 'block';
+            }
+        }
+
+        function marketingLogout() {
+            localStorage.removeItem('karmapath_marketing_unlocked');
+            applyAccessMode(false);
+        }
+
+        document.getElementById('login-cancel').addEventListener('click', hideLoginModal);
+        document.getElementById('login-submit').addEventListener('click', attemptLogin);
+        loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
+
         // init
         const borderStyleSelect = document.getElementById('border-style-select');
         const borderSidesSelect = document.getElementById('border-sides-select');
         applyMoodAccent();
         updateDisplayAesthetics();
+        applyAccessMode(localStorage.getItem('karmapath_marketing_unlocked') === 'true');
     </script>
 </body>
 </html>
