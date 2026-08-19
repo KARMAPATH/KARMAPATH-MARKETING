@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karmapath — Brand Kit & Guidelines</title>
+<meta name="description" content="Karmapath brand kit and guidelines — wordmark, feather mark, color system, typography, vocabulary, and content rules for marketing interns.">
+<link rel="icon" type="image/png" sizes="32x32" href="sm-favicon-32.png">
+<link rel="apple-touch-icon" href="sm-apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --charcoal: #2B2B2B;
+        --violet: #6D28D9;
+        --wm-gray: #8A8A8A;
+        --off-white: #F5F5F7;
+    }
+    * { box-sizing: border-box; }
+    body {
+        margin: 0; padding: 0; color: var(--charcoal);
+        font-family: 'Work Sans', sans-serif;
+        background: radial-gradient(ellipse 90% 70% at 50% 42%, #EAD8DD 0%, #F3E8E6 45%, #FAF6F4 75%, #FFFFFF 100%);
+        background-attachment: fixed;
+        line-height: 1.6;
+    }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 60px 24px 100px; }
+    header { text-align: center; margin-bottom: 70px; }
+    header img { width: 72px; height: auto; margin-bottom: 18px; opacity: 0.9; }
+    header h1 {
+        font-family: 'Jost', sans-serif; font-weight: 400; text-transform: uppercase;
+        letter-spacing: 0.16em; color: var(--violet); font-size: 34px; margin: 0;
+    }
+    header .sankalp {
+        font-family: 'Jost', sans-serif; font-weight: 400; text-transform: uppercase;
+        letter-spacing: 0.5em; color: var(--wm-gray); font-size: 13px; margin: 6px 0 0;
+    }
+    header .subtitle {
+        font-family: 'Jost', sans-serif; font-weight: 400; text-transform: uppercase;
+        letter-spacing: 0.3em; color: var(--wm-gray); font-size: 11px; margin-top: 28px;
+    }
+    section { margin-bottom: 56px; }
+    h2 {
+        font-family: 'Jost', sans-serif; font-weight: 500; font-size: 21px;
+        border-bottom: 1px solid rgba(43,43,43,0.12); padding-bottom: 14px; margin-bottom: 8px;
+    }
+    section > p.intro { color: var(--wm-gray); font-size: 14px; margin-top: 0; margin-bottom: 24px; }
+
+    .rule-row { display: flex; gap: 24px; padding: 16px 0; border-bottom: 1px solid rgba(43,43,43,0.06); }
+    .rule-row .label {
+        flex: 0 0 160px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--wm-gray);
+    }
+    .rule-row .value { flex: 1; font-size: 14px; }
+
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+    .card {
+        border: 1px solid rgba(43,43,43,0.1); border-radius: 12px; padding: 18px 20px; background: rgba(255,255,255,0.5);
+    }
+    .card .card-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+    .card .card-body { font-size: 13px; color: #4a4a4a; }
+
+    .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px; }
+    .swatch { border: 1px solid rgba(43,43,43,0.1); border-radius: 12px; overflow: hidden; background: #fff; }
+    .swatch .fill { height: 70px; border-bottom: 1px solid rgba(43,43,43,0.06); }
+    .swatch .info { padding: 10px 12px; }
+    .swatch .name { font-weight: 600; font-size: 12px; }
+    .swatch .hex { font-size: 11px; color: var(--wm-gray); font-family: monospace; }
+
+    .rule-note {
+        font-size: 13px; color: #4a4a4a; background: rgba(109,40,217,0.05);
+        border-left: 3px solid var(--violet); padding: 12px 16px; border-radius: 0 8px 8px 0;
+    }
+
+    .vocab-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+    .vocab-pills .pill {
+        border: 1px solid rgba(43,43,43,0.15); border-radius: 999px; padding: 8px 16px;
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; background: #fff;
+    }
+    .vocab-closer { font-style: italic; font-size: 15px; color: var(--charcoal); }
+
+    .vibe-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .vibe-card { border: 1px solid rgba(43,43,43,0.1); border-radius: 12px; padding: 14px 16px; background: rgba(255,255,255,0.5); }
+    .vibe-card .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    .vibe-card .mood-name { font-weight: 600; font-size: 13px; }
+    .vibe-card .mood-desc { font-size: 12px; color: var(--wm-gray); margin-top: 4px; }
+
+    .dodont { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .dodont .col h3 { font-family:'Jost',sans-serif; font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; }
+    .dodont .col.do h3 { color: #059669; }
+    .dodont .col.dont h3 { color: #DC2626; }
+    .dodont ul { padding-left: 18px; margin: 10px 0 0; }
+    .dodont li { font-size: 13px; margin-bottom: 10px; color: #3a3a3a; }
+    @media (max-width: 640px) { .dodont { grid-template-columns: 1fr; } }
+
+    footer { text-align: center; margin-top: 80px; font-size: 11px; color: var(--wm-gray); text-transform: uppercase; letter-spacing: 0.2em; }
+
+    .download-all {
+        display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+        background: var(--violet); color: #fff; border-radius: 14px; padding: 22px 26px; margin-bottom: 24px;
+    }
+    .download-all .dl-title { font-family: 'Jost', sans-serif; font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .download-all .dl-sub { font-size: 12px; opacity: 0.85; margin-top: 4px; }
+    .download-all a.dl-btn {
+        background: #fff; color: var(--violet); text-decoration: none; font-size: 11px; text-transform: uppercase;
+        letter-spacing: 0.1em; padding: 12px 22px; border-radius: 999px; font-weight: 600; white-space: nowrap;
+    }
+    .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+    .asset-card {
+        border: 1px solid rgba(43,43,43,0.1); border-radius: 12px; overflow: hidden; background: #fff;
+        display: flex; flex-direction: column;
+    }
+    .asset-card .preview {
+        height: 130px; display: flex; align-items: center; justify-content: center;
+        background: repeating-conic-gradient(#f4f4f5 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
+    }
+    .asset-card .preview img { max-width: 70%; max-height: 70%; object-fit: contain; }
+    .asset-card .asset-info { padding: 12px 14px; border-top: 1px solid rgba(43,43,43,0.06); }
+    .asset-card .asset-name { font-weight: 600; font-size: 12px; }
+    .asset-card .asset-meta { font-size: 11px; color: var(--wm-gray); margin: 2px 0 10px; }
+    .asset-card a.asset-dl {
+        display: block; text-align: center; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--violet); border: 1px solid var(--violet); border-radius: 8px; padding: 7px; text-decoration: none;
+    }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <header>
+        <img src="sm-icon-512.png" alt="Karmapath feather mark">
+        <h1>Karmapath</h1>
+        <p class="sankalp">Sankalp</p>
+        <p class="subtitle">Brand Kit &amp; Guidelines</p>
+    </header>
+
+    <section>
+        <h2>1 · Wordmark</h2>
+        <p class="intro">The exact lockup from the physical packaging. Never redraw it, never restyle it per-post.</p>
+        <div class="rule-row"><div class="label">"Karmapath" line</div><div class="value">Uppercase, <strong>regular weight — never bold</strong>, wide letter-spacing (0.16em), color #6D28D9 (violet).</div></div>
+        <div class="rule-row"><div class="label">"Sankalp" line</div><div class="value">Uppercase, regular weight, even wider letter-spacing (0.5em), color #8A8A8A (mid gray), sits directly beneath "Karmapath," smaller size, indented slightly right.</div></div>
+        <div class="rule-row"><div class="label">Stacking order</div><div class="value">KARMAPATH always on top, SANKALP always directly beneath — never side-by-side, never reversed.</div></div>
+        <div class="rule-row"><div class="label">Minimum size</div><div class="value">Never smaller than 11px cap-height for "Karmapath" in any digital placement — below that, use the feather mark alone instead.</div></div>
+        <div class="rule-row"><div class="label">Backgrounds</div><div class="value">Only on white, off-white (#F5F5F7), or very light neutral backgrounds. Never on a photo, never on a saturated color block.</div></div>
+        <div class="rule-row"><div class="label">Never</div><div class="value">Never bold, never italic, never a drop shadow, never re-colored per emotion, never stretched or condensed.</div></div>
+    </section>
+
+    <section>
+        <h2>2 · Feather Mark</h2>
+        <p class="intro">Krishna's mor pankh, redrawn as a single continuous line. The signature, not the decoration.</p>
+        <div class="card-grid">
+            <div class="card"><div class="card-title">Line weight</div><div class="card-body">One consistent stroke weight throughout — no variable width, no taper.</div></div>
+            <div class="card"><div class="card-title">Default color</div><div class="card-body">Charcoal ink #2B2B2B on white/off-white. On emotion-specific assets, may shift to that emotion's accent color at 6–15% opacity only.</div></div>
+            <div class="card"><div class="card-title">Placement size</div><div class="card-body">Small, corner-anchored on all daily content. Larger and centered only on first-touch brand assets (page cover, greeting card, packaging, Day 1 manifesto slide).</div></div>
+            <div class="card"><div class="card-title">Clear space</div><div class="card-body">Minimum clear space on every side equal to the width of the feather's stem. Never crop the crown or stem.</div></div>
+            <div class="card"><div class="card-title">Pairing with wordmark</div><div class="card-body">When both appear together, feather sits above the wordmark as its "crest" — never beside it, never overlapping the letterforms.</div></div>
+            <div class="card"><div class="card-title">Never</div><div class="card-body">No gradients, no bevels/drop shadows, no second competing icon in frame, never scaled larger than the headline type on any single asset.</div></div>
+        </div>
+    </section>
+
+    <section>
+        <h2>3 · Color System</h2>
+        <p class="intro">Two systems that never mix: the neutral brand base, and the 8 emotion accents (used one at a time, never combined on a single asset).</p>
+        <div class="swatch-grid">
+            <div class="swatch"><div class="fill" style="background:#FFFFFF;border-bottom:1px solid rgba(43,43,43,0.1);"></div><div class="info"><div class="name">Pure White</div><div class="hex">#FFFFFF</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#F5F5F7;"></div><div class="info"><div class="name">Off-White</div><div class="hex">#F5F5F7</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#2B2B2B;"></div><div class="info"><div class="name">Charcoal Ink</div><div class="hex">#2B2B2B</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#6D28D9;"></div><div class="info"><div class="name">Wordmark Violet</div><div class="hex">#6D28D9</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#8A8A8A;"></div><div class="info"><div class="name">Wordmark Gray</div><div class="hex">#8A8A8A</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#2563EB;"></div><div class="info"><div class="name">Sadness</div><div class="hex">#2563EB</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#F472B6;"></div><div class="info"><div class="name">Peace</div><div class="hex">#F472B6</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#64748B;"></div><div class="info"><div class="name">Anxiety</div><div class="hex">#64748B</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#DC2626;"></div><div class="info"><div class="name">Anger</div><div class="hex">#DC2626</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#059669;"></div><div class="info"><div class="name">Happiness</div><div class="hex">#059669</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#F97316;"></div><div class="info"><div class="name">Protection</div><div class="hex">#F97316</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#EAB308;"></div><div class="info"><div class="name">Laziness</div><div class="hex">#EAB308</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#8B5CF6;"></div><div class="info"><div class="name">Loneliness</div><div class="hex">#8B5CF6</div></div></div>
+        </div>
+        <p class="rule-note"><strong>Rule:</strong> Exactly one emotion accent per asset. Never mix two emotion colors in the same frame — the 8-dot grid (all colors shown together) is the only sanctioned exception.</p>
+    </section>
+
+    <section>
+        <h2>3b · Background System</h2>
+        <p class="intro">Sampled directly from the printed Karmapath packaging insert — a soft radial blush that reads as white from a distance but is never a flat, sterile white up close.</p>
+        <div class="swatch-grid">
+            <div class="swatch"><div class="fill" style="background:#EAD8DD;"></div><div class="info"><div class="name">Center Blush</div><div class="hex">#EAD8DD</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#F3E8E6;"></div><div class="info"><div class="name">Mid Transition</div><div class="hex">#F3E8E6</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#FAF6F4;"></div><div class="info"><div class="name">Outer Edge</div><div class="hex">#FAF6F4</div></div></div>
+            <div class="swatch"><div class="fill" style="background:#FFFFFF;border-bottom:1px solid rgba(43,43,43,0.1);"></div><div class="info"><div class="name">Corners</div><div class="hex">#FFFFFF</div></div></div>
+        </div>
+        <div class="rule-row"><div class="label">Shape</div><div class="value">A soft radial gradient centered slightly above middle — dusty rose-lavender at the core, warming to near-white at the corners. Never a hard linear top-to-bottom fade.</div></div>
+        <div class="rule-row"><div class="label">CSS</div><div class="value" style="font-family:monospace; font-size:12px;">radial-gradient(ellipse 90% 70% at 50% 42%, #EAD8DD 0%, #F3E8E6 45%, #FAF6F4 75%, #FFFFFF 100%)</div></div>
+        <div class="rule-row"><div class="label">Where to use it</div><div class="value">Packaging, brand-reveal / manifesto assets, page and cover backgrounds, gifting cards. This IS the site's own background right now.</div></div>
+        <div class="rule-row"><div class="label">Where to use flat white instead</div><div class="value">Straight product photography (catalog thumbnails, box flat-lays) stays on pure white or off-white #F5F5F7 for e-commerce trust and clarity — the blush gradient is a brand-storytelling background, not a product-shot background.</div></div>
+    </section>
+
+    <section>
+        <h2>4 · Typography</h2>
+        <div class="rule-row"><div class="label">Display / Headlines</div><div class="value">Jost — uppercase, wide letter-spacing, regular weight for brand lines; medium (500–600) only for section headers, never for the wordmark itself.</div></div>
+        <div class="rule-row"><div class="label">Body / Captions</div><div class="value">Work Sans — sentence case, no letter-spacing, 400–500 weight.</div></div>
+        <div class="rule-row"><div class="label">Sanskrit</div><div class="value">Noto Serif Devanagari — always paired directly above or beside its English translation, never used alone without a translation nearby.</div></div>
+        <div class="rule-row"><div class="label">Never</div><div class="value">No decorative or script fonts anywhere in the system. No all-caps body text (uppercase is reserved for headlines and the wordmark).</div></div>
+    </section>
+
+    <section>
+        <h2>5 · Brand Vocabulary</h2>
+        <p class="intro">Core phrases to rotate through captions, story text, and CTAs — never paraphrase these, use them verbatim.</p>
+        <div class="vocab-pills">
+            <span class="pill">Sankalp</span>
+            <span class="pill">Assume the Role of Arjuna</span>
+            <span class="pill">Let the Universe Guide You</span>
+            <span class="pill">Observe Your Mind. Read When You Feel:</span>
+            <span class="pill">Explore the Path</span>
+            <span class="pill">Sent with light and intention.</span>
+        </div>
+        <p style="font-size:12px; color:var(--wm-gray); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Full-length line (use sparingly, as a closer):</p>
+        <p class="vocab-closer">"You deserve absolute clarity and peace. May this codex be a mirror to your inner wisdom."</p>
+    </section>
+
+    <section>
+        <h2>6 · Visual Vibe System</h2>
+        <p class="intro">Each emotion has one fixed mood identity. Lighting, pacing, and color grade should never drift between posts of the same emotion.</p>
+        <div class="vibe-grid">
+            <div class="vibe-card"><span class="dot" style="background:#2563EB;"></span><span class="mood-name">Sadness</span><div class="mood-desc">Quiet Rain-Window — cool, flat, unhurried</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#F472B6;"></span><span class="mood-name">Peace</span><div class="mood-desc">Morning Hush — warm-neutral, hushed</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#64748B;"></span><span class="mood-name">Anxiety</span><div class="mood-desc">Held Breath — flat overcast, restless-to-still</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#DC2626;"></span><span class="mood-name">Anger</span><div class="mood-desc">Smoldering Ember — high-contrast, cooling down</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#059669;"></span><span class="mood-name">Happiness</span><div class="mood-desc">Sunlit Clarity — bright, crisp, unforced</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#F97316;"></span><span class="mood-name">Protection</span><div class="mood-desc">Candlelit Refuge — warm, low, enclosing</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#EAB308;"></span><span class="mood-name">Laziness</span><div class="mood-desc">Golden-Hour Inertia — hazy, drowsy, lifting</div></div>
+            <div class="vibe-card"><span class="dot" style="background:#8B5CF6;"></span><span class="mood-name">Loneliness</span><div class="mood-desc">Dusk Solitude — cool, vast, quiet</div></div>
+        </div>
+    </section>
+
+    <section>
+        <h2>7 · Content Production Rules</h2>
+        <div class="card-grid">
+            <div class="card"><div class="card-title">Reels</div><div class="card-body">100% real, on-ground, filmed on an actual phone. 5–9 seconds. Silent or ASMR-only audio. No acting, no voiceover, no heavy editing. Hands and product only.</div></div>
+            <div class="card"><div class="card-title">Feed Posts / Carousels</div><div class="card-body">AI-generated static assets. Always off-white gradient background, one emotion accent, torn-paper texture, generous negative space, the brand lockup small in a corner.</div></div>
+            <div class="card"><div class="card-title">Stories</div><div class="card-body">AI-generated graphics layered with native Instagram interactive stickers (poll, slider, question box, quiz, countdown, mention). Every Story Day ends on a link sticker.</div></div>
+            <div class="card"><div class="card-title">Consistency Check</div><div class="card-body">Before publishing anything, confirm: correct emotion color, correct vibe/mood, brand lockup present and correctly weighted, and at least one vocabulary phrase in the caption.</div></div>
+        </div>
+    </section>
+
+    <section>
+        <h2>8 · Master Do's &amp; Don'ts</h2>
+        <div class="dodont">
+            <div class="col do">
+                <h3>Always Do</h3>
+                <ul>
+                    <li>Keep KARMAPATH regular weight, never bold</li>
+                    <li>Use exactly one emotion color per asset</li>
+                    <li>Pair every Sanskrit line with its English translation</li>
+                    <li>Place the feather + wordmark lockup small, in a corner or bottom edge</li>
+                    <li>Match lighting/mood to that emotion's fixed vibe</li>
+                    <li>Film Reels 100% real and unscripted, 5–9 seconds</li>
+                    <li>Close every Story Day with a link sticker</li>
+                </ul>
+            </div>
+            <div class="col dont">
+                <h3>Never Do</h3>
+                <ul>
+                    <li>Never bold, italicize, or re-color the wordmark</li>
+                    <li>Never mix two emotion colors on one asset (except the 8-dot grid)</li>
+                    <li>Never add a drop shadow, bevel, or gradient to the feather mark</li>
+                    <li>Never scale the brand lockup larger than the headline type</li>
+                    <li>Never act, use a voiceover, or heavily edit a Reel</li>
+                    <li>Never place the wordmark on a photo or saturated color block</li>
+                    <li>Never paraphrase the core brand phrases — use them verbatim</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <h2>9 · Downloadable Assets</h2>
+        <p class="intro">Ready-to-use logo files for marketing — no need to export or recreate anything from scratch.</p>
+
+        <div class="download-all">
+            <div>
+                <div class="dl-title">Full Asset Pack (.zip)</div>
+                <div class="dl-sub">All 7 files below, bundled — the fastest way to grab everything at once.</div>
+            </div>
+            <a class="dl-btn" href="karmapath-brand-assets.zip" download>Download All ↓</a>
+        </div>
+
+        <div class="asset-grid">
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-feather.png" alt="Feather mark"></div>
+                <div class="asset-info">
+                    <div class="asset-name">Feather Mark</div>
+                    <div class="asset-meta">Transparent PNG · 398×800</div>
+                    <a class="asset-dl" href="karmapath-feather.png" download>Download</a>
+                </div>
+            </div>
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-icon-512.png" alt="App icon 512"></div>
+                <div class="asset-info">
+                    <div class="asset-name">App Icon (Large)</div>
+                    <div class="asset-meta">PNG · 512×512</div>
+                    <a class="asset-dl" href="karmapath-icon-512.png" download>Download</a>
+                </div>
+            </div>
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-icon-192.png" alt="App icon 192"></div>
+                <div class="asset-info">
+                    <div class="asset-name">App Icon (Small)</div>
+                    <div class="asset-meta">PNG · 192×192</div>
+                    <a class="asset-dl" href="karmapath-icon-192.png" download>Download</a>
+                </div>
+            </div>
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-apple-touch-icon.png" alt="Apple touch icon"></div>
+                <div class="asset-info">
+                    <div class="asset-name">Apple Touch Icon</div>
+                    <div class="asset-meta">PNG · 180×180</div>
+                    <a class="asset-dl" href="karmapath-apple-touch-icon.png" download>Download</a>
+                </div>
+            </div>
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-favicon-32.png" alt="Favicon 32"></div>
+                <div class="asset-info">
+                    <div class="asset-name">Favicon</div>
+                    <div class="asset-meta">PNG · 32×32</div>
+                    <a class="asset-dl" href="karmapath-favicon-32.png" download>Download</a>
+                </div>
+            </div>
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-favicon-16.png" alt="Favicon 16"></div>
+                <div class="asset-info">
+                    <div class="asset-name">Favicon (Small)</div>
+                    <div class="asset-meta">PNG · 16×16</div>
+                    <a class="asset-dl" href="karmapath-favicon-16.png" download>Download</a>
+                </div>
+            </div>
+            <div class="asset-card">
+                <div class="preview"><img src="karmapath-og-image.png" alt="Social share image"></div>
+                <div class="asset-info">
+                    <div class="asset-name">Social Share Image</div>
+                    <div class="asset-meta">JPG-style PNG · 1200×1200</div>
+                    <a class="asset-dl" href="karmapath-og-image.png" download>Download</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>Karmapath Sankalp — Internal Brand Reference</footer>
+</div>
+</body>
+</html>

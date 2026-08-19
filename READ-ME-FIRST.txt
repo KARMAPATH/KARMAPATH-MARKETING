@@ -1,0 +1,35 @@
+KARMAPATH STORY STUDIO — DEPLOY PACKAGE
+=========================================
+
+This repo is separate from the main CLS Foundation site, so everything
+here just uploads flat — straight to the repo ROOT, no subfolder needed.
+
+Upload all 16 files below into the same folder:
+
+- index.html               → the Story Studio tool itself
+                              (this was karmapath_story_maker.html — already renamed)
+- karmapath-brand-kit.html → brand guidelines + one-click asset downloads,
+                              linked from the tool via the "Brand Kit ↗" button
+
+- sm-manifest.json          → Story Studio's PWA manifest
+- sm-icon-512.png
+- sm-icon-192.png
+- sm-apple-touch-icon.png
+- sm-favicon-32.png
+- sm-favicon-16.png
+- sm-og-image.png           → these 6 are the Story Studio's own app icons
+
+- karmapath-brand-assets.zip → the "Download All" bundle on the brand kit page
+- karmapath-feather.png
+- karmapath-icon-512.png
+- karmapath-icon-192.png
+- karmapath-apple-touch-icon.png
+- karmapath-favicon-32.png
+- karmapath-favicon-16.png
+- karmapath-og-image.png    → these 7 are the actual Karmapath brand assets —
+                              the brand kit page links to each one directly
+
+That's it — flat structure, all 16 files in one folder, done.
+
+One thing to remember for later: if you ever rename index.html again,
+sm-manifest.json has a "start_url" field that needs to match.

@@ -274,6 +274,10 @@
         }
         .feather-border-left { left: 2.5%; }
         .feather-border-right { right: 2.5%; }
+
+        /* Sides selector: which edges the border appears on */
+        .border-sides-tb .feather-border-left, .border-sides-tb .feather-border-right { display: none; }
+        .border-sides-lr .feather-border-top, .border-sides-lr .feather-border-bottom { display: none; }
     </style>
 </head>
 <body class="antialiased relative flex flex-col items-center justify-center">
@@ -450,10 +454,18 @@ Read when you feel.</textarea>
                     <option value="balanced">Balanced</option>
                     <option value="full">Full Garland</option>
                 </select>
+                <select id="border-sides-select" onchange="onBorderStyleChange()" class="bg-white border border-black/10 rounded-lg px-2 py-1 text-[9px] uppercase tracking-widest focus:outline-none appearance-none" style="color:var(--charcoal);">
+                    <option value="all">All Sides</option>
+                    <option value="tb">Top &amp; Bottom Only</option>
+                    <option value="lr">Left &amp; Right Only</option>
+                </select>
             </div>
 
             <!-- Caption generator -->
-            <button onclick="generateCaption()" class="mx-2 px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors self-start" style="color:var(--charcoal);">Generate Caption</button>
+            <div class="flex items-center gap-2 mx-2 self-start">
+                <button onclick="generateCaption()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--charcoal);">Generate Caption</button>
+                <a href="karmapath-brand-kit.html" target="_blank" rel="noopener" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--violet); text-decoration:none;">Brand Kit ↗</a>
+            </div>
 
             <!-- Size Slider -->
             <div class="flex flex-col gap-2 px-2 mt-1">
@@ -1277,6 +1289,7 @@ Read when you feel.</textarea>
         const exportCloseBtn = document.getElementById('export-close');
         const exportFallbackNote = document.getElementById('export-fallback-note');
         let pendingExport = null; // { file, imgData, filename }
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         // Renders the canvas (the slow, async part). No navigator.share() call happens
         // in here — that must wait for a fresh, direct tap on the Share button below,
@@ -1316,9 +1329,19 @@ Read when you feel.</textarea>
                     offsetY = (window.innerHeight - captureHeight) / 2;
                 }
 
+                // iOS Safari has a hard canvas memory ceiling (roughly 16 million pixels
+                // total, device-dependent) — a full-screen capture at scale:2 can exceed
+                // it on larger iPhones, which silently corrupts or blanks the export.
+                // Cap the effective scale so width*scale × height*scale stays safely under it.
+                const MAX_CANVAS_PIXELS = isIOS ? 12_000_000 : 24_000_000;
+                let renderScale = 2;
+                while ((captureWidth * renderScale) * (captureHeight * renderScale) > MAX_CANVAS_PIXELS && renderScale > 1) {
+                    renderScale -= 0.25;
+                }
+
                 const canvas = await html2canvas(document.body, {
                     backgroundColor: "#FFFFFF",
-                    scale: 2,
+                    scale: renderScale,
                     width: captureWidth,
                     height: captureHeight,
                     x: window.scrollX + offsetX,
@@ -1328,7 +1351,14 @@ Read when you feel.</textarea>
                         el.id === 'export-modal'
                 });
 
+                if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                    throw new Error('Canvas render produced an empty image');
+                }
+
                 const imgData = canvas.toDataURL('image/jpeg', 0.92);
+                if (!imgData || imgData === 'data:,') {
+                    throw new Error('Canvas export produced empty image data');
+                }
                 const blob = await (await fetch(imgData)).blob();
                 const filename = `karmapath-${formatSelect.value}.jpg`;
                 const file = new File([blob], filename, { type: 'image/jpeg' });
@@ -1339,11 +1369,17 @@ Read when you feel.</textarea>
                 const canUseShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
                 exportShareBtn.style.display = canUseShare ? 'block' : 'none';
                 exportFallbackNote.style.display = canUseShare ? 'none' : 'block';
+                exportFallbackNote.textContent = isIOS
+                    ? "Tap Save Image, then long-press the photo that opens and choose \"Add to Photos.\""
+                    : "Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.";
 
                 exportModal.classList.add('open');
             } catch (error) {
                 console.error("Export failed:", error);
-                alert("Something went wrong preparing the image. Please try again.");
+                const msg = isIOS
+                    ? "Couldn't create the image. On iPhone, try Safari (not an in-app browser like Instagram's), and make sure Low Power Mode is off."
+                    : "Something went wrong preparing the image. Please try again.";
+                alert(msg);
             }
 
             controlPanel.classList.remove('hide-transition');
@@ -1365,10 +1401,17 @@ Read when you feel.</textarea>
 
         exportSaveBtn.addEventListener('click', () => {
             if (!pendingExport) return;
-            const link = document.createElement('a');
-            link.download = pendingExport.filename;
-            link.href = pendingExport.imgData;
-            link.click();
+            if (isIOS) {
+                // iOS Safari has never reliably honored the `download` attribute — the
+                // working pattern is to open the image directly so the user can
+                // long-press → "Add to Photos" from Safari's native menu.
+                window.open(pendingExport.imgData, '_blank');
+            } else {
+                const link = document.createElement('a');
+                link.download = pendingExport.filename;
+                link.href = pendingExport.imgData;
+                link.click();
+            }
         });
 
         exportCloseBtn.addEventListener('click', () => {
@@ -1395,6 +1438,13 @@ Read when you feel.</textarea>
         };
 
         function buildFeatherBorder() {
+            const sidesEl = document.getElementById('feather-border');
+            const sidesKey = borderSidesSelect ? borderSidesSelect.value : 'all';
+            if (sidesEl) {
+                sidesEl.classList.toggle('border-sides-tb', sidesKey === 'tb');
+                sidesEl.classList.toggle('border-sides-lr', sidesKey === 'lr');
+            }
+
             const styleKey = borderStyleSelect ? borderStyleSelect.value : 'surprise';
             const isSurprise = styleKey === 'surprise';
             const preset = BORDER_STYLES[styleKey] || BORDER_STYLES.balanced;
@@ -1442,6 +1492,7 @@ Read when you feel.</textarea>
 
         // init
         const borderStyleSelect = document.getElementById('border-style-select');
+        const borderSidesSelect = document.getElementById('border-sides-select');
         applyMoodAccent();
         updateDisplayAesthetics();
     </script>
