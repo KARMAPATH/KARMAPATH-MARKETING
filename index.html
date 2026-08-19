@@ -1315,6 +1315,65 @@ Read when you feel.</textarea>
         // in here — that must wait for a fresh, direct tap on the Share button below,
         // otherwise browsers (Safari/iOS especially) reject it as not coming from a
         // user gesture and it silently fails.
+        // useCORS alone didn't resolve the Safari SecurityError, so this goes further:
+        // pre-fetch the actual font files and embed them as data URIs (genuinely
+        // same-origin), then inject that as an override stylesheet before capture.
+        // This is the standard robust fix for html2canvas + Safari + Google Fonts
+        // tainted-canvas errors. Cached after first successful run so repeat exports
+        // don't re-fetch. If fetching fails for any reason (offline, blocked, etc.),
+        // it fails silently and export proceeds with the original fonts as before.
+        let embeddedFontsCSS = null;
+        let embeddedFontsAttempted = false;
+
+        async function embedGoogleFontsAsDataURIs() {
+            if (embeddedFontsCSS) return embeddedFontsCSS;
+            if (embeddedFontsAttempted) return null; // already tried and failed this session
+            embeddedFontsAttempted = true;
+            try {
+                const cssUrl = "https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600&family=Work+Sans:wght@400;500&family=Noto+Serif+Devanagari:wght@300;400&display=swap";
+                let cssText = await (await fetch(cssUrl)).text();
+
+                const urlRegex = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
+                const fontUrls = [...new Set([...cssText.matchAll(urlRegex)].map(m => m[1]))];
+
+                await Promise.all(fontUrls.map(async (fontUrl) => {
+                    try {
+                        const fontBlob = await (await fetch(fontUrl)).blob();
+                        const dataUri = await new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(fontBlob);
+                        });
+                        cssText = cssText.split(fontUrl).join(dataUri);
+                    } catch (e) {
+                        console.warn('Could not embed one font file, leaving as-is:', fontUrl, e);
+                    }
+                }));
+
+                embeddedFontsCSS = cssText;
+                return embeddedFontsCSS;
+            } catch (e) {
+                console.warn('Font embedding failed, export will use original fonts:', e);
+                return null;
+            }
+        }
+
+        async function injectEmbeddedFontsIfPossible() {
+            const css = await embedGoogleFontsAsDataURIs();
+            if (!css) return; // silent fallback — proceed with original <link> fonts
+            let styleEl = document.getElementById('embedded-fonts-style');
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.id = 'embedded-fonts-style';
+                document.head.appendChild(styleEl);
+            }
+            styleEl.textContent = css;
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) { /* non-fatal */ }
+            }
+        }
+
         async function prepareExport() {
             shareText.style.display = 'none';
             shareLoader.style.display = 'block';
@@ -1326,6 +1385,8 @@ Read when you feel.</textarea>
                 if (typeof html2canvas === 'undefined') {
                     throw new Error('HTML2CANVAS_NOT_LOADED');
                 }
+
+                await injectEmbeddedFontsIfPossible();
 
                 let captureWidth = window.innerWidth;
                 let captureHeight = window.innerHeight;
