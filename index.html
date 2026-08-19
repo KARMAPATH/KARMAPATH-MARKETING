@@ -109,6 +109,17 @@
             letter-spacing: 0.5em;
             color: var(--wm-gray);
         }
+        /* Alternate watermark: a single descriptive line instead of the 2-line lockup */
+        .watermark-thought-line {
+            text-transform: none !important;
+            font-family: 'Work Sans', sans-serif !important;
+            font-style: italic;
+            font-size: 11px !important;
+            letter-spacing: 0.01em !important;
+            color: var(--wm-gray) !important;
+            max-width: 220px;
+            text-align: center;
+        }
 
         input[type=range] { -webkit-appearance: none; background: transparent; }
         input[type=range]::-webkit-slider-thumb {
@@ -507,6 +518,7 @@ Read when you feel.</textarea>
                 <a id="brand-kit-link" href="karmapath-brand-kit.html" target="_blank" rel="noopener" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--violet); text-decoration:none; display:none;">Brand Kit ↗</a>
                 <button id="marketing-login-btn" onclick="showLoginModal()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--wm-gray);">Marketing Login</button>
                 <button id="marketing-logout-btn" onclick="marketingLogout()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--wm-gray); display:none;">Log Out</button>
+                <button id="watermark-toggle-btn" onclick="toggleWatermarkMode()" class="px-3 py-2 bg-white hover:bg-black/5 border border-black/10 rounded-lg text-[9px] uppercase tracking-widest transition-colors" style="color:var(--wm-gray);">Watermark: Default</button>
             </div>
 
             <!-- Size Slider -->
@@ -1152,7 +1164,7 @@ Read when you feel.</textarea>
         function formatShlokaRef(ref) {
             const m = ref.match(/BG\s*(\d+)\.(\d+)/);
             if (!m) return ref;
-            return `Bhagwat Geeta  #Chapter ${m[1]} Shloka ${m[2]}`;
+            return `BG #CH ${m[1]} VERSE ${m[2]}`;
         }
 
         function drawRandomShloka() {
@@ -1164,12 +1176,12 @@ Read when you feel.</textarea>
             const randomShloka = shlokasList[Math.floor(Math.random() * shlokasList.length)];
             lastShloka = randomShloka;
 
-            const compiledText = `${formatShlokaRef(randomShloka.ref)}\n\n${randomShloka.sanskrit}\n\n"${randomShloka.translation}"`;
+            const compiledText = `${formatShlokaRef(randomShloka.ref)}\n\n"${randomShloka.translation}"`;
 
             textInput.value = compiledText;
             displayText.innerHTML = compiledText.replace(/\n/g, '<br>');
 
-            fontSelect.value = "devanagari";
+            fontSelect.value = "work-sans";
             weightSelect.value = "400";
             colorSelect.value = "accent";
 
@@ -1469,15 +1481,28 @@ Read when you feel.</textarea>
                 const logoW = 26, logoH = (img.height / img.width) * logoW;
                 ctx.drawImage(img, captureWidth / 2 - logoW / 2, bottomY, logoW, logoH);
 
-                ctx.fillStyle = '#6D28D9';
-                ctx.font = '400 16px "Jost", sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText('K A R M A P A T H', captureWidth / 2, bottomY + logoH + 24);
 
-                ctx.fillStyle = '#8A8A8A';
-                ctx.font = '400 10px "Jost", sans-serif';
-                ctx.fillText('S A N K A L P', captureWidth / 2, bottomY + logoH + 42);
+                if (watermarkMode === 'thought') {
+                    ctx.fillStyle = '#8A8A8A';
+                    ctx.font = 'italic 400 12px "Work Sans", sans-serif';
+                    const maxW = captureWidth * 0.6;
+                    const line = 'A Thought by Karmapath Sankalp';
+                    let fitted = line;
+                    while (ctx.measureText(fitted).width > maxW && fitted.length > 10) {
+                        fitted = fitted.slice(0, -1);
+                    }
+                    ctx.fillText(fitted, captureWidth / 2, bottomY + logoH + 24);
+                } else {
+                    ctx.fillStyle = '#6D28D9';
+                    ctx.font = '400 16px "Jost", sans-serif';
+                    ctx.fillText('K A R M A P A T H', captureWidth / 2, bottomY + logoH + 24);
+
+                    ctx.fillStyle = '#8A8A8A';
+                    ctx.font = '400 10px "Jost", sans-serif';
+                    ctx.fillText('S A N K A L P', captureWidth / 2, bottomY + logoH + 42);
+                }
             } catch (e) {
                 console.warn('Fallback canvas: could not draw logo, continuing without it', e);
             }
@@ -1881,8 +1906,8 @@ Read when you feel.</textarea>
         // Client-side only — this is a usage gate for casual restriction, not real
         // security (anyone can view-source and find these). Change the credentials
         // below to whatever you want; that's the only place they're defined.
-        const MARKETING_USERNAME = 'marketing';
-        const MARKETING_PASSWORD = 'karmapath2026';
+        const MARKETING_USERNAME = 'kamal';
+        const MARKETING_PASSWORD = 'radheradhe';
 
         function applyAccessMode(unlocked) {
             document.body.classList.toggle('generic-mode', !unlocked);
@@ -1940,11 +1965,41 @@ Read when you feel.</textarea>
             document.getElementById('landing-screen').classList.add('entered');
         }
 
+        // Watermark toggle: switches between the standard 2-line KARMAPATH/SANKALP
+        // lockup and a single descriptive "A Thought by Karmapath Sankalp" line.
+        // Read by both the live DOM (below) and the canvas fallback's
+        // drawLogoAndWordmark, so exports match whatever is showing on screen.
+        let watermarkMode = 'default';
+
+        function applyWatermarkMode() {
+            const line1 = document.getElementById('wordmark-line1');
+            const line2 = document.getElementById('wordmark-line2');
+            const btn = document.getElementById('watermark-toggle-btn');
+            if (watermarkMode === 'thought') {
+                line1.textContent = 'A Thought by Karmapath Sankalp';
+                line1.classList.add('watermark-thought-line');
+                line2.style.display = 'none';
+                if (btn) btn.textContent = 'Watermark: Thought';
+            } else {
+                line1.textContent = 'KARMAPATH';
+                line1.classList.remove('watermark-thought-line');
+                line2.style.display = '';
+                line2.textContent = 'SANKALP';
+                if (btn) btn.textContent = 'Watermark: Default';
+            }
+        }
+
+        function toggleWatermarkMode() {
+            watermarkMode = watermarkMode === 'default' ? 'thought' : 'default';
+            applyWatermarkMode();
+        }
+
         // init
         const borderStyleSelect = document.getElementById('border-style-select');
         const borderSidesSelect = document.getElementById('border-sides-select');
         applyMoodAccent();
         updateDisplayAesthetics();
+        applyWatermarkMode();
         applyAccessMode(localStorage.getItem('karmapath_marketing_unlocked') === 'true');
     </script>
 </body>
