@@ -1371,6 +1371,8 @@ Read when you feel.</textarea>
                     height: captureHeight,
                     x: window.scrollX + offsetX,
                     y: window.scrollY + offsetY,
+                    useCORS: true,
+                    foreignObjectRendering: false,
                     ignoreElements: (el) => el.id === 'control-panel' || el.id === 'show-ui-btn' ||
                         el.id === 'link-guide' || el.id === 'checklist-modal' || el.id === 'caption-panel' ||
                         el.id === 'export-modal'
@@ -1405,6 +1407,8 @@ Read when you feel.</textarea>
                 let msg;
                 if (error && error.message === 'HTML2CANVAS_NOT_LOADED') {
                     msg = "The image tool failed to load — usually a slow, blocked, or offline connection.\n\nCheck your internet connection, reload the page fully, and try again.";
+                } else if (error && (error.name === 'SecurityError' || /insecure/i.test(error.message || ''))) {
+                    msg = "Couldn't create the image — a font or resource loaded in a way the browser blocked from being captured (SecurityError).\n\nTry a hard reload (close the tab fully and reopen), and if it still happens, screenshot this message.";
                 } else {
                     const detail = (error && (error.message || error.name)) ? String(error.message || error.name) : String(error);
                     msg = "Couldn't create the image.\n\nTechnical detail (please screenshot this exact text if it happens again):\n" + detail;
