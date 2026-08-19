@@ -1549,14 +1549,20 @@ Read when you feel.</textarea>
                 const fontWeight = weightSelect.value || '400';
                 const fontSize = Math.max(14, Math.min(90, parseInt(sizeSlider.value, 10) || 34));
 
-                // Explicitly load THIS exact weight/size before measuring — document.fonts.ready
-                // (checked earlier) only guarantees already-requested fonts are ready, not that
-                // this specific combination has ever been requested. Without this, measureText()
-                // can silently use a fallback font while fillText() later uses the real one once
-                // it arrives, causing mismatched wrapping and off-center text.
+                // Explicitly load THIS exact weight/size — and critically, pass the actual
+                // text as the second argument. Per the CSS Font Loading spec, load(font)
+                // without a text argument defaults to checking only a single space
+                // character. Google serves Noto Serif Devanagari as SEPARATE subset files
+                // per unicode-range (Latin vs Devanagari) — loading without text only ever
+                // confirmed the Latin subset, never the Devanagari one. measureText() was
+                // silently measuring against a fallback font the entire time, which is the
+                // actual root cause of the wrapping/centering being wrong for shlokas.
                 const fontString = `${fontWeight} ${fontSize}px "${fontFamily}"`;
                 if (document.fonts && document.fonts.load) {
-                    try { await document.fonts.load(fontString); } catch (e) { /* proceed with fallback font */ }
+                    try {
+                        await document.fonts.load(fontString, textInput.value);
+                        await document.fonts.ready;
+                    } catch (e) { /* proceed with fallback font */ }
                 }
 
                 ctx.fillStyle = textColor;
@@ -1624,10 +1630,36 @@ Read when you feel.</textarea>
                 const isDevanagariFont = fontFamily === 'Noto Serif Devanagari';
                 const maxTextWidth = captureWidth * (isDevanagariFont ? 0.70 : 0.82);
                 const rawLines = textInput.value.split('\n');
-                const wrapped = [];
+                let wrapped = [];
                 rawLines.forEach(rawLine => {
                     wrapLineRobust(rawLine, maxTextWidth).forEach(l => wrapped.push(l));
                 });
+
+                // Hard verification pass: don't just trust the wrapping decisions made
+                // above — re-check every line's actual width right now, with fonts
+                // fully settled, and force-split anything that's still too wide. This
+                // is a guarantee, not a best-effort: whatever caused a bad measurement
+                // upstream (font subset timing, script shaping, anything else), no line
+                // can reach fillText() wider than the canvas.
+                const verified = [];
+                wrapped.forEach(line => {
+                    if (line === '' || getTextWidth(line) <= maxTextWidth) {
+                        verified.push(line);
+                        return;
+                    }
+                    let chunk = '';
+                    for (const ch of line) {
+                        const testChunk = chunk + ch;
+                        if (getTextWidth(testChunk) > maxTextWidth && chunk) {
+                            verified.push(chunk);
+                            chunk = ch;
+                        } else {
+                            chunk = testChunk;
+                        }
+                    }
+                    if (chunk) verified.push(chunk);
+                });
+                wrapped = verified;
 
                 const lineHeight = fontSize * 1.35;
                 const startY = captureHeight * 0.42 - ((wrapped.length - 1) * lineHeight) / 2;
