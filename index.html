@@ -1388,6 +1388,7 @@ Read when you feel.</textarea>
                 exportPreviewImg.src = imgData;
 
                 const canUseShare = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [file] }));
+                pendingExport.canUseShare = canUseShare;
                 exportShareBtn.style.display = canUseShare ? 'block' : 'none';
                 exportFallbackNote.style.display = canUseShare ? 'none' : 'block';
                 exportFallbackNote.textContent = isIOS
@@ -1422,10 +1423,20 @@ Read when you feel.</textarea>
 
         exportSaveBtn.addEventListener('click', () => {
             if (!pendingExport) return;
-            if (isIOS) {
-                // iOS Safari has never reliably honored the `download` attribute — the
-                // working pattern is to open the image directly so the user can
-                // long-press → "Add to Photos" from Safari's native menu.
+            if (isIOS && pendingExport.canUseShare) {
+                // iOS's native share sheet already has "Save Image" built into it —
+                // routing through navigator.share() here instead of window.open()
+                // is what actually works reliably inside an installed home-screen
+                // app (standalone PWA mode), where window.open() is unreliable/blocked.
+                navigator.share({ files: [pendingExport.file], title: 'Karmapath' })
+                    .then(() => { exportModal.classList.remove('open'); })
+                    .catch((err) => {
+                        if (err && err.name === 'AbortError') return;
+                        console.error('Save via share sheet failed:', err);
+                        alert("Couldn't open the save sheet. Try Share to Story instead.");
+                    });
+            } else if (isIOS) {
+                // Rare fallback for iOS without file-sharing support — best effort only.
                 window.open(pendingExport.imgData, '_blank');
             } else {
                 const link = document.createElement('a');
