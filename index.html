@@ -1399,7 +1399,7 @@ Read when you feel.</textarea>
             } catch (error) {
                 console.error("Export failed:", error);
                 const msg = isIOS
-                    ? "Couldn't create the image. On iPhone, try Safari (not an in-app browser like Instagram's), and make sure Low Power Mode is off."
+                    ? "Couldn't create the image — this usually means you're inside an app's built-in browser (WhatsApp, Instagram, etc.), which blocks this.\n\nTap ••• or ⋯ at the bottom of the screen, choose \"Open in Safari,\" then try exporting again from there."
                     : "Something went wrong preparing the image. Please try again.";
                 alert(msg);
             }
