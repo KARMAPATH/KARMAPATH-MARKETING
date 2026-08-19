@@ -1548,15 +1548,75 @@ Read when you feel.</textarea>
                 const fontFamily = fontFamilyMap[fontSelect.value] || 'Work Sans';
                 const fontWeight = weightSelect.value || '400';
                 const fontSize = Math.max(14, Math.min(90, parseInt(sizeSlider.value, 10) || 34));
+                const isDevanagariFont = fontFamily === 'Noto Serif Devanagari';
+                const maxTextWidth = captureWidth * (isDevanagariFont ? 0.86 : 0.82);
 
-                // Explicitly load THIS exact weight/size — and critically, pass the actual
-                // text as the second argument. Per the CSS Font Loading spec, load(font)
-                // without a text argument defaults to checking only a single space
-                // character. Google serves Noto Serif Devanagari as SEPARATE subset files
-                // per unicode-range (Latin vs Devanagari) — loading without text only ever
-                // confirmed the Latin subset, never the Devanagari one. measureText() was
-                // silently measuring against a fallback font the entire time, which is the
-                // actual root cause of the wrapping/centering being wrong for shlokas.
+                async function getWrappedLines(text, widthPx) {
+                    // Use a REAL temporary DOM element so the browser's own text-shaping
+                    // engine decides the line breaks — the exact same reliable mechanism
+                    // the old (pre-fallback) version leaned on via html2canvas capturing
+                    // the live page, which never had this problem. We tried rendering
+                    // this via SVG <foreignObject> + <img> (a common technique) but
+                    // confirmed directly, on both file:// and real http:// origins, that
+                    // Chromium refuses to rasterize foreignObject HTML content when an
+                    // SVG is loaded as an <img> source (a deliberate anti-XSS browser
+                    // restriction, not a bug we can work around). So: extract the real
+                    // line-break points via the Range API (each visual line has its own
+                    // client rect), then draw those already-correct short lines with
+                    // plain, reliable ctx.fillText — no re-implementing browser text
+                    // shaping ourselves, and no dependency on the broken image path.
+                    const measurer = document.createElement('div');
+                    measurer.style.cssText = `
+                        position: fixed; left: -9999px; top: 0; visibility: hidden;
+                        width: ${widthPx}px; white-space: pre-wrap; word-wrap: break-word;
+                        text-align: center; line-height: 1.45;
+                        font-family: '${fontFamily}', sans-serif; font-weight: ${fontWeight}; font-size: ${fontSize}px;
+                    `;
+                    measurer.textContent = text;
+                    document.body.appendChild(measurer);
+                    if (document.fonts && document.fonts.ready) {
+                        try { await document.fonts.ready; } catch (e) { /* proceed anyway */ }
+                    }
+
+                    const textNode = measurer.firstChild;
+                    const lines = [];
+                    let currentLine = '';
+                    let lastTop = null;
+                    if (textNode && textNode.length > 0) {
+                        const range = document.createRange();
+                        for (let i = 0; i < textNode.length; i++) {
+                            range.setStart(textNode, i);
+                            range.setEnd(textNode, i + 1);
+                            const rects = range.getClientRects();
+                            const rect = rects[rects.length - 1];
+                            const ch = textNode.textContent[i];
+                            if (rect && rect.width > 0) {
+                                if (lastTop !== null && Math.abs(rect.top - lastTop) > fontSize * 0.5) {
+                                    lines.push(currentLine);
+                                    currentLine = '';
+                                }
+                                lastTop = rect.top;
+                            }
+                            if (ch === '\n') {
+                                lines.push(currentLine);
+                                currentLine = '';
+                                lastTop = null;
+                            } else {
+                                currentLine += ch;
+                            }
+                        }
+                    }
+                    if (currentLine) lines.push(currentLine);
+                    document.body.removeChild(measurer);
+                    return lines;
+                }
+
+                // document.fonts.load(font) with no text argument defaults to checking
+                // only a single space character (per the CSS Font Loading spec) — for a
+                // multi-subset font like Google's Noto Serif Devanagari (Latin and
+                // Devanagari are separate files), that only ever confirms the Latin
+                // subset loaded. Pass the real text so the Devanagari subset actually
+                // loads before we draw with it.
                 const fontString = `${fontWeight} ${fontSize}px "${fontFamily}"`;
                 if (document.fonts && document.fonts.load) {
                     try {
@@ -1565,105 +1625,14 @@ Read when you feel.</textarea>
                     } catch (e) { /* proceed with fallback font */ }
                 }
 
+                const wrappedLines = await getWrappedLines(textInput.value, maxTextWidth);
                 ctx.fillStyle = textColor;
                 ctx.font = `${fontString}, sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-
-                // Wraps a line to fit maxWidth. Falls back to breaking mid-word at the
-                // character level when a single word (or an unbroken Devanagari run —
-                // some shloka source text uses spacing/punctuation that doesn't always
-                // give clean word-break points) is wider than maxWidth on its own.
-                // Without this fallback, that one "word" never wraps and just runs off
-                // the right edge of the canvas — which is exactly the bug being reported.
-                // measureText().width is the simple "advance width" — for complex-shaped
-                // scripts like Devanagari (conjuncts, vowel signs/matras that visually
-                // extend beyond a naive per-character sum), it can under-report the true
-                // rendered width. That under-count was the actual cause of Sanskrit lines
-                // overflowing past center and getting clipped at the canvas edge, even
-                // though the same wrap/center logic worked fine for Latin text.
-                // actualBoundingBoxLeft/Right reflect the real drawn extent and catch this.
-                function getTextWidth(text) {
-                    const m = ctx.measureText(text);
-                    if (m.actualBoundingBoxLeft !== undefined && m.actualBoundingBoxRight !== undefined) {
-                        return Math.max(m.width, Math.abs(m.actualBoundingBoxLeft) + Math.abs(m.actualBoundingBoxRight));
-                    }
-                    return m.width;
-                }
-
-                function wrapLineRobust(rawLine, maxWidth) {
-                    if (rawLine.trim() === '') return [''];
-                    const out = [];
-                    const words = rawLine.split(' ');
-                    let current = '';
-                    words.forEach(word => {
-                        const test = current ? current + ' ' + word : word;
-                        if (getTextWidth(test) <= maxWidth) {
-                            current = test;
-                            return;
-                        }
-                        if (current) { out.push(current); current = ''; }
-                        if (getTextWidth(word) <= maxWidth) {
-                            current = word;
-                        } else {
-                            // Even the lone word is too wide — break it character by character.
-                            let chunk = '';
-                            for (const ch of word) {
-                                const testChunk = chunk + ch;
-                                if (getTextWidth(testChunk) > maxWidth && chunk) {
-                                    out.push(chunk);
-                                    chunk = ch;
-                                } else {
-                                    chunk = testChunk;
-                                }
-                            }
-                            current = chunk;
-                        }
-                    });
-                    if (current) out.push(current);
-                    return out;
-                }
-
-                // Extra-conservative width budget for Devanagari specifically, on top of
-                // the more accurate measurement above — belt and suspenders, since this
-                // script has caused real overflow/centering bugs here before.
-                const isDevanagariFont = fontFamily === 'Noto Serif Devanagari';
-                const maxTextWidth = captureWidth * (isDevanagariFont ? 0.70 : 0.82);
-                const rawLines = textInput.value.split('\n');
-                let wrapped = [];
-                rawLines.forEach(rawLine => {
-                    wrapLineRobust(rawLine, maxTextWidth).forEach(l => wrapped.push(l));
-                });
-
-                // Hard verification pass: don't just trust the wrapping decisions made
-                // above — re-check every line's actual width right now, with fonts
-                // fully settled, and force-split anything that's still too wide. This
-                // is a guarantee, not a best-effort: whatever caused a bad measurement
-                // upstream (font subset timing, script shaping, anything else), no line
-                // can reach fillText() wider than the canvas.
-                const verified = [];
-                wrapped.forEach(line => {
-                    if (line === '' || getTextWidth(line) <= maxTextWidth) {
-                        verified.push(line);
-                        return;
-                    }
-                    let chunk = '';
-                    for (const ch of line) {
-                        const testChunk = chunk + ch;
-                        if (getTextWidth(testChunk) > maxTextWidth && chunk) {
-                            verified.push(chunk);
-                            chunk = ch;
-                        } else {
-                            chunk = testChunk;
-                        }
-                    }
-                    if (chunk) verified.push(chunk);
-                });
-                wrapped = verified;
-
                 const lineHeight = fontSize * 1.35;
-                const startY = captureHeight * 0.42 - ((wrapped.length - 1) * lineHeight) / 2;
-                wrapped.forEach((line, i) => {
+                const startY = captureHeight * 0.42 - ((wrappedLines.length - 1) * lineHeight) / 2;
+                wrappedLines.forEach((line, i) => {
                     if (line !== '') ctx.fillText(line, captureWidth / 2, startY + i * lineHeight);
                 });
 
