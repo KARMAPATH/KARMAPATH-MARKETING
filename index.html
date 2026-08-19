@@ -278,9 +278,38 @@
         /* Sides selector: which edges the border appears on */
         .border-sides-tb .feather-border-left, .border-sides-tb .feather-border-right { display: none; }
         .border-sides-lr .feather-border-top, .border-sides-lr .feather-border-bottom { display: none; }
+
+        /* Landing screen — shown first, taps through into the studio */
+        #landing-screen {
+            position: fixed; inset: 0; z-index: 100;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 32px;
+            background: radial-gradient(ellipse 90% 70% at 50% 42%, #EAD8DD 0%, #F3E8E6 45%, #FAF6F4 75%, #FFFFFF 100%);
+            cursor: pointer; transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+        #landing-screen.entered { opacity: 0; visibility: hidden; pointer-events: none; }
+        #landing-screen img { width: 40px; height: auto; margin-bottom: 20px; opacity: 0.9; }
+        #landing-tagline {
+            font-family: 'Work Sans', sans-serif; font-size: 17px; line-height: 1.6;
+            color: var(--charcoal); max-width: 340px; margin: 20px 0 36px;
+        }
+        @keyframes landingPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        #landing-enter-dot { animation: landingPulse 2s ease-in-out infinite; }
     </style>
 </head>
 <body class="antialiased relative flex flex-col items-center justify-center">
+
+    <!-- Landing screen: brand moment before the studio tools appear -->
+    <div id="landing-screen" onclick="enterStudio()">
+        <img src="karmapath-feather.png" alt="Karmapath Sankalp">
+        <h1 style="font-family:'Jost',sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:0.16em; color:var(--violet); font-size:26px; margin:0;">Karmapath</h1>
+        <p style="font-family:'Jost',sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:0.5em; color:var(--wm-gray); font-size:11px; margin:6px 0 0;">Sankalp</p>
+        <p id="landing-tagline">Make everyone's day a little better — share a thought.</p>
+        <div>
+            <div id="landing-enter-dot" style="width:8px; height:8px; border-radius:50%; background:var(--violet); margin:0 auto 10px;"></div>
+            <p style="font-family:'Jost',sans-serif; font-size:9px; letter-spacing:0.3em; text-transform:uppercase; color:var(--wm-gray);">Tap to Enter Studio</p>
+        </div>
+    </div>
 
     <div class="grain"></div>
 
@@ -1374,6 +1403,103 @@ Read when you feel.</textarea>
             }
         }
 
+        // Native Canvas 2D fallback — used automatically if html2canvas fails for any
+        // reason. This draws the export directly (background gradient, text, logo)
+        // instead of screenshotting the live DOM, so there's no cross-origin resource
+        // for any browser to taint the canvas over. Simpler visually (no border/dot-grid/
+        // torn-edge modes) but reliable everywhere, which matters more when the primary
+        // path has failed.
+        async function renderFallbackCanvas(captureWidth, captureHeight) {
+            const canvas = document.createElement('canvas');
+            const scale = 2;
+            canvas.width = Math.round(captureWidth * scale);
+            canvas.height = Math.round(captureHeight * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+
+            // Background: the same blush radial gradient used site-wide
+            const grad = ctx.createRadialGradient(
+                captureWidth * 0.5, captureHeight * 0.42, 0,
+                captureWidth * 0.5, captureHeight * 0.42, Math.max(captureWidth, captureHeight) * 0.75
+            );
+            grad.addColorStop(0, '#EAD8DD');
+            grad.addColorStop(0.45, '#F3E8E6');
+            grad.addColorStop(0.75, '#FAF6F4');
+            grad.addColorStop(1, '#FFFFFF');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, captureWidth, captureHeight);
+
+            if (document.fonts && document.fonts.ready) {
+                try { await document.fonts.ready; } catch (e) { /* draw with fallback font if needed */ }
+            }
+
+            // Quote text — word-aware line wrapping, centered
+            const mood = moodSelect.value;
+            const accentHex = MOOD_ACCENTS[mood] || '#64748B';
+            const colorVal = colorSelect.value;
+            const textColor = colorVal === 'accent' ? accentHex : (colorVal || '#2B2B2B');
+            const fontFamilyMap = { 'work-sans': 'Work Sans', 'jost': 'Jost', 'devanagari': 'Noto Serif Devanagari' };
+            const fontFamily = fontFamilyMap[fontSelect.value] || 'Work Sans';
+            const fontWeight = weightSelect.value || '400';
+            const fontSize = Math.max(20, Math.min(60, parseInt(sizeSlider.value, 10) || 34));
+
+            ctx.fillStyle = textColor;
+            ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            const maxTextWidth = captureWidth * 0.82;
+            const rawLines = textInput.value.split('\n');
+            const wrapped = [];
+            rawLines.forEach(rawLine => {
+                const words = rawLine.split(' ');
+                let current = '';
+                words.forEach(word => {
+                    const test = current ? current + ' ' + word : word;
+                    if (ctx.measureText(test).width > maxTextWidth && current) {
+                        wrapped.push(current);
+                        current = word;
+                    } else {
+                        current = test;
+                    }
+                });
+                wrapped.push(current);
+            });
+
+            const lineHeight = fontSize * 1.35;
+            const startY = captureHeight * 0.42 - ((wrapped.length - 1) * lineHeight) / 2;
+            wrapped.forEach((line, i) => {
+                ctx.fillText(line, captureWidth / 2, startY + i * lineHeight);
+            });
+
+            // Feather crest + wordmark near the bottom
+            try {
+                const logoSrc = FEATHER_LOGO[mood] || FEATHER_LOGO.default;
+                const img = await new Promise((resolve, reject) => {
+                    const im = new Image();
+                    im.onload = () => resolve(im);
+                    im.onerror = reject;
+                    im.src = logoSrc;
+                });
+                const logoW = 26, logoH = (img.height / img.width) * logoW;
+                const logoX = captureWidth / 2 - logoW / 2;
+                const logoY = captureHeight - 128;
+                ctx.drawImage(img, logoX, logoY, logoW, logoH);
+
+                ctx.fillStyle = '#6D28D9';
+                ctx.font = '400 16px "Jost", sans-serif';
+                ctx.fillText('K A R M A P A T H', captureWidth / 2, logoY + logoH + 24);
+
+                ctx.fillStyle = '#8A8A8A';
+                ctx.font = '400 10px "Jost", sans-serif';
+                ctx.fillText('S A N K A L P', captureWidth / 2, logoY + logoH + 42);
+            } catch (e) {
+                console.warn('Fallback canvas: could not draw logo, continuing without it', e);
+            }
+
+            return canvas;
+        }
+
         async function prepareExport() {
             shareText.style.display = 'none';
             shareLoader.style.display = 'block';
@@ -1382,12 +1508,6 @@ Read when you feel.</textarea>
             await new Promise(r => setTimeout(r, 400));
 
             try {
-                if (typeof html2canvas === 'undefined') {
-                    throw new Error('HTML2CANVAS_NOT_LOADED');
-                }
-
-                await injectEmbeddedFontsIfPossible();
-
                 let captureWidth = window.innerWidth;
                 let captureHeight = window.innerHeight;
                 let offsetX = 0;
@@ -1415,32 +1535,46 @@ Read when you feel.</textarea>
                     offsetY = (window.innerHeight - captureHeight) / 2;
                 }
 
-                // iOS Safari has a hard canvas memory ceiling (roughly 16 million pixels
-                // total, device-dependent) — a full-screen capture at scale:2 can exceed
-                // it on larger iPhones, which silently corrupts or blanks the export.
-                // Cap the effective scale so width*scale × height*scale stays safely under it.
-                const MAX_CANVAS_PIXELS = isIOS ? 12_000_000 : 24_000_000;
-                let renderScale = 2;
-                while ((captureWidth * renderScale) * (captureHeight * renderScale) > MAX_CANVAS_PIXELS && renderScale > 1) {
-                    renderScale -= 0.25;
-                }
+                let canvas = null;
+                let usedFallback = false;
 
-                const canvas = await html2canvas(document.body, {
-                    backgroundColor: "#FFFFFF",
-                    scale: renderScale,
-                    width: captureWidth,
-                    height: captureHeight,
-                    x: window.scrollX + offsetX,
-                    y: window.scrollY + offsetY,
-                    useCORS: true,
-                    foreignObjectRendering: false,
-                    ignoreElements: (el) => el.id === 'control-panel' || el.id === 'show-ui-btn' ||
-                        el.id === 'link-guide' || el.id === 'checklist-modal' || el.id === 'caption-panel' ||
-                        el.id === 'export-modal'
-                });
+                // Primary path: html2canvas (full visual fidelity — border, dot-grid,
+                // torn-edge modes all come through this).
+                try {
+                    if (typeof html2canvas === 'undefined') throw new Error('HTML2CANVAS_NOT_LOADED');
+                    await injectEmbeddedFontsIfPossible();
 
-                if (!canvas || canvas.width === 0 || canvas.height === 0) {
-                    throw new Error('Canvas render produced an empty image');
+                    const MAX_CANVAS_PIXELS = isIOS ? 12_000_000 : 24_000_000;
+                    let renderScale = 2;
+                    while ((captureWidth * renderScale) * (captureHeight * renderScale) > MAX_CANVAS_PIXELS && renderScale > 1) {
+                        renderScale -= 0.25;
+                    }
+
+                    canvas = await html2canvas(document.body, {
+                        backgroundColor: "#FFFFFF",
+                        scale: renderScale,
+                        width: captureWidth,
+                        height: captureHeight,
+                        x: window.scrollX + offsetX,
+                        y: window.scrollY + offsetY,
+                        useCORS: true,
+                        foreignObjectRendering: false,
+                        ignoreElements: (el) => el.id === 'control-panel' || el.id === 'show-ui-btn' ||
+                            el.id === 'link-guide' || el.id === 'checklist-modal' || el.id === 'caption-panel' ||
+                            el.id === 'export-modal' || el.id === 'landing-screen'
+                    });
+
+                    if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                        throw new Error('Canvas render produced an empty image');
+                    }
+                    // Confirm the canvas is actually readable now, not just non-empty —
+                    // a tainted canvas can still report width/height, it only throws
+                    // once you try to read pixel data back out of it.
+                    canvas.toDataURL('image/jpeg', 0.5);
+                } catch (primaryError) {
+                    console.warn('html2canvas failed, using native canvas fallback instead:', primaryError);
+                    canvas = await renderFallbackCanvas(captureWidth, captureHeight);
+                    usedFallback = true;
                 }
 
                 const imgData = canvas.toDataURL('image/jpeg', 0.92);
@@ -1458,9 +1592,9 @@ Read when you feel.</textarea>
                 pendingExport.canUseShare = canUseShare;
                 exportShareBtn.style.display = canUseShare ? 'block' : 'none';
                 exportFallbackNote.style.display = canUseShare ? 'none' : 'block';
-                exportFallbackNote.textContent = isIOS
+                exportFallbackNote.textContent = (usedFallback ? "Simplified export (border/grid styling not included this time). " : "") + (isIOS
                     ? "Tap Save Image, then long-press the photo that opens and choose \"Add to Photos.\""
-                    : "Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.";
+                    : "Sharing isn't available on this browser/device — use Save Image, then share it from your Photos app.");
 
                 exportModal.classList.add('open');
             } catch (error) {
@@ -1653,6 +1787,10 @@ Read when you feel.</textarea>
         document.getElementById('login-cancel').addEventListener('click', hideLoginModal);
         document.getElementById('login-submit').addEventListener('click', attemptLogin);
         loginPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') attemptLogin(); });
+
+        function enterStudio() {
+            document.getElementById('landing-screen').classList.add('entered');
+        }
 
         // init
         const borderStyleSelect = document.getElementById('border-style-select');
